@@ -205,6 +205,18 @@ do
 
   vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
+  vim.keymap.set('n', '<leader>tl', function()
+    local lint = require 'lint'
+    if lint.linters_by_ft['markdown'] then
+      lint.linters_by_ft['markdown'] = nil
+      vim.diagnostic.reset()
+      print 'markdown linting off'
+    else
+      lint.linters_by_ft['markdown'] = { 'markdownlint-cli2' }
+      print 'markdown linting on'
+    end
+  end, { desc = '[T]oggle Markdown [L]inting' })
+
   -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
   -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
   -- is not what someone will guess without a bit more experience.
@@ -441,6 +453,27 @@ do
 
   -- ... and there is more!
   --  Check out: https://github.com/nvim-mini/mini.nvim
+end
+
+-- ============================================================
+-- SECTION 3.5: HARPOON — Quick file marking and jumping
+-- ============================================================
+do
+  vim.pack.add { gh 'nvim-lua/plenary.nvim' }
+  vim.pack.add { { src = gh 'ThePrimeagen/harpoon', version = 'harpoon2' } }
+
+  local harpoon = require 'harpoon'
+  harpoon:setup()
+
+  -- Mark current file / toggle quick menu
+  vim.keymap.set('n', '<leader>a', function() harpoon:list():add() end, { desc = 'Harpoon: [A]dd file' })
+  vim.keymap.set('n', '<C-e>', function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, { desc = 'Harpoon: toggle menu' })
+
+  -- Jump to marked files 1-4 (<C-h> conflicts with tmux pane nav, use <leader>1-4 instead)
+  vim.keymap.set('n', '<leader>1', function() harpoon:list():select(1) end, { desc = 'Harpoon: file [1]' })
+  vim.keymap.set('n', '<leader>2', function() harpoon:list():select(2) end, { desc = 'Harpoon: file [2]' })
+  vim.keymap.set('n', '<leader>3', function() harpoon:list():select(3) end, { desc = 'Harpoon: file [3]' })
+  vim.keymap.set('n', '<leader>4', function() harpoon:list():select(4) end, { desc = 'Harpoon: file [4]' })
 end
 
 -- ============================================================
