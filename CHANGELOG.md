@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.2.0 — 2026-05-14
+
+- Added Helm support
+  - Filetype detection: `**/templates/*.{yaml,yml,tpl}` and `helmfile*.yaml` now resolve to the `helm` filetype (init.lua Section 1)
+  - LSP: `helm_ls` added to the Mason-managed servers — provides `.Values.*` go-to-definition, `include`/`define` jumps, completion, and hover
+  - `yamlls` scoped to `{ yaml, yaml.docker-compose, yaml.gitlab }` so it no longer double-attaches to helm buffers
+  - Treesitter parsers: added `helm`, `gotmpl`, and `yaml` to the pre-install list so they bundle for air-gap
+  - Air-gap note in `CLAUDE.md`: `helm-ls` must be installed via Mason on the online box before bundling
+- Markdown linting is now OFF by default
+  - `lua/kickstart/plugins/lint.lua` starts with an empty `linters_by_ft` to silence baseline noise
+  - `<leader>tl` toggles markdown linting on/off as before; the "on" branch now runs `lint.try_lint()` immediately so diagnostics appear without saving first
+- Fixed nvim exiting when closing the last file buffer with neo-tree open
+  - `close_if_last_window` flipped to `false` in `lua/kickstart/plugins/neo-tree.lua` — neo-tree now stays open instead of closing itself and dragging nvim down with it
+
 ## v1.1.0 — 2026-05-14
 
 - Added `lazygit.nvim` as an opt-in kickstart plugin (`lua/kickstart/plugins/lazygit.lua`)

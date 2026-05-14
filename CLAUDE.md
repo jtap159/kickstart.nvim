@@ -44,6 +44,9 @@ lua/custom/plugins/             ← Jeremy's own plugins
 dist/                           ← offline binaries for air-gapped deployment
   nvim-linux-x86_64.tar.gz      ← Neovim binary
   tree-sitter-cli-linux-x86.zip ← tree-sitter CLI
+scripts/                        ← repo automation
+  bundle-airgap.sh              ← build the air-gap tarball (replaces the old skill)
+  RESTORE.template.md           ← RESTORE.md template, version-substituted at bundle time
 .stylua.toml                    ← Lua formatter config (160 col, 2-space, single quotes)
 ```
 
@@ -73,7 +76,11 @@ dist/                           ← offline binaries for air-gapped deployment
 | Comment highlights | todo-comments.nvim |
 | Auto brackets | nvim-autopairs (opt-in) |
 
-**Active LSPs/tools (auto-installed via Mason):** `lua_ls`, `stylua`
+**Active LSPs/tools (auto-installed via Mason):** `lua_ls`, `stylua`, `prettier`, `yamlls`, `jsonls`, `helm_ls`
+
+**Helm files:** files under any `templates/` directory (and `helmfile*.yaml`) are detected as the `helm` filetype via `vim.filetype.add` (end of Section 1). They get the `helm` treesitter parser (which injects `yaml` + `gotmpl`) and the `helm_ls` LSP. `yamlls` is scoped to plain yaml filetypes so it does not double-attach. `Chart.yaml` and `values.yaml` remain plain `yaml`.
+
+**Air-gap note for Helm:** `helm-ls` must be pre-installed via Mason on the online box (`:MasonInstall helm-ls`) before bundling — the bundling skill copies whatever is already in `~/.local/share/nvim/mason/`. The treesitter `helm`/`gotmpl`/`yaml` parsers are included in the pre-install list at `init.lua` Section 8, so they bundle automatically.
 
 To add more: add to the `servers` table in `init.lua` ~line 688.
 
@@ -247,6 +254,8 @@ Auto-format on save is **off by default**. To enable for a filetype, add it to `
 - Mason tools/LSPs: `~/.local/share/nvim/mason/`
 - Treesitter parsers: `~/.local/share/nvim/site/parser/*.so`
 - Neovim + tree-sitter CLI binaries: `dist/` in this repo (for manual extraction)
+
+**Building the bundle:** run `bash scripts/bundle-airgap.sh` from anywhere. The script reads the version from `CHANGELOG.md`, stages everything in `/tmp/`, flips `vim.g.airgapped=true` in the staged copy, generates `RESTORE.md` from `scripts/RESTORE.template.md`, and writes `bundles/nvim-airgapped-bundle-<version>.tar.gz`. The script is the source of truth — there is no skill version anymore.
 
 ---
 

@@ -3,9 +3,11 @@
 pack_add { 'https://github.com/mfussenegger/nvim-lint' }
 
 local lint = require 'lint'
-lint.linters_by_ft = {
-  markdown = { 'markdownlint-cli2' }, -- Make sure to install `markdownlint-cli2` via mason
-}
+-- Markdown linting is OFF by default — markdownlint diagnostics are noisy
+-- for normal note-taking. Toggle on per-session with <leader>tl (defined in
+-- init.lua Section 1) when you actually want to lint a markdown file.
+-- `markdownlint-cli2` is still installed via Mason so the toggle works.
+lint.linters_by_ft = {}
 
 -- To allow other plugins to add linters to require('lint').linters_by_ft,
 -- instead set linters_by_ft like this:

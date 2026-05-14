@@ -16,7 +16,9 @@ pack_add(plugins)
 vim.keymap.set('n', '\\', '<Cmd>Neotree reveal<CR>', { desc = 'NeoTree reveal', silent = true })
 
 require('neo-tree').setup {
-  close_if_last_window = true,
+  -- Keep neo-tree open when it would otherwise be the last window — prevents
+  -- nvim from exiting when you close your last file buffer with `:q` or `:bd`.
+  close_if_last_window = false,
   filesystem = {
     window = {
       mappings = {

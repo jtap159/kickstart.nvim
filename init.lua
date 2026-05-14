@@ -219,6 +219,8 @@ do
       print 'markdown linting off'
     else
       lint.linters_by_ft['markdown'] = { 'markdownlint-cli2' }
+      -- Lint immediately so the user sees the effect without saving first
+      if vim.bo.filetype == 'markdown' and vim.bo.modifiable then lint.try_lint() end
       print 'markdown linting on'
     end
   end, { desc = '[T]oggle Markdown [L]inting' })
@@ -263,6 +265,19 @@ do
     group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
     callback = function() vim.hl.on_yank() end,
   })
+
+  -- [[ Filetype detection ]]
+  -- Helm charts: files under a `templates/` directory are YAML + Go templates,
+  -- which trip up plain yamlls and the yaml treesitter parser. Promote them to
+  -- the `helm` filetype so `helm_ls` and the `helm` treesitter parser take over.
+  -- Chart.yaml / values.yaml stay as plain yaml.
+  vim.filetype.add {
+    pattern = {
+      ['.*/templates/.*%.ya?ml'] = 'helm',
+      ['.*/templates/.*%.tpl'] = 'helm',
+      ['helmfile.*%.ya?ml'] = 'helm',
+    },
+  }
 end
 
 -- ============================================================
@@ -779,8 +794,19 @@ do
     stylua = {}, -- Used to format Lua code
     prettier = {}, -- Used to format JSON, YAML, Markdown, etc.
 
-    yamlls = {},
+    -- Restrict yamlls to plain YAML — helm templates are handled by helm_ls,
+    -- which embeds its own yamlls for the non-templated chunks. Letting both
+    -- attach causes duplicate diagnostics and fights over formatting.
+    yamlls = {
+      filetypes = { 'yaml', 'yaml.docker-compose', 'yaml.gitlab' },
+    },
     jsonls = {},
+
+    -- Helm LSP: completion for `.Values.*`, `include`/`define` navigation,
+    -- and schema-aware diagnostics for Chart.yaml / values.yaml. Mason
+    -- installs it as `helm-ls`; for air-gap, run `:MasonInstall helm-ls`
+    -- on the online box before bundling.
+    helm_ls = {},
 
     -- Special Lua Config, as recommended by neovim help docs
     lua_ls = {
@@ -986,7 +1012,9 @@ do
 
   -- Ensure basic parsers are installed (skipped in air-gapped mode — parsers
   -- are expected to already live in stdpath('data')/site/parser/*.so)
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  -- Helm: the `helm` parser injects `yaml` and `gotmpl` ranges, so all three
+  -- must be installed for full highlighting inside templates/*.yaml files.
+  local parsers = { 'bash', 'c', 'diff', 'gotmpl', 'helm', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'yaml' }
   if not vim.g.airgapped then require('nvim-treesitter').install(parsers) end
 
   ---@param buf integer
