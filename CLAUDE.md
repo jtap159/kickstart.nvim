@@ -16,6 +16,16 @@ When helping Jeremy, act as a Neovim mentor — not just a config assistant. He 
 
 ---
 
+## Companion Docs
+
+Detailed usage guides for specific tools live in `doc/`. **Read the relevant file first when the user asks about that tool — these docs are the source of truth and are also available on the air-gapped VM after deployment.**
+
+| Tool | Doc | When to consult |
+|---|---|---|
+| lazygit | `doc/lazygit.md` | Any question about lazygit, the `lazygit.nvim` plugin, `<leader>gg`/`<leader>gf`/`<leader>gl`, in-TUI keybindings, hunk staging, interactive rebase, merge conflict resolution, or how the lazygit binary gets into the air-gapped bundle |
+
+---
+
 ## Config Architecture
 
 Everything lives in `init.lua` — options, keymaps, and all plugins via `vim.pack` (Neovim's built-in plugin manager). The file is organized into 9 `do...end` sections. The `lua/kickstart/plugins/` modules are **opt-in extras** that must be explicitly `require`'d in `init.lua` (~line 964) to activate. Personal plugins go in `lua/custom/plugins/`.

@@ -49,6 +49,20 @@ Remove the bundles/ directory from the copy (it's gitignored and potentially hug
 rm -rf /tmp/nvim-airgapped-bundle-<version>/config/nvim/bundles/
 ```
 
+Verify the offline binaries in dist/ came along — these are load-bearing for the
+RESTORE.md install steps (Neovim, tree-sitter CLI, lazygit):
+```bash
+ls /tmp/nvim-airgapped-bundle-<version>/config/nvim/dist/
+```
+
+Expected files:
+- `nvim-linux-x86_64.tar.gz`
+- `tree-sitter-cli-linux-x86.zip`
+- `lazygit_*_linux_x86_64.tar.gz`
+
+If any are missing, abort and tell the user to re-stage `dist/` before
+bundling.
+
 ## Step 5 — Flip airgapped=true in the bundled copy
 
 Edit `/tmp/nvim-airgapped-bundle-<version>/config/nvim/init.lua` — find the line:
@@ -111,8 +125,9 @@ data/
   site/parser/        ← Treesitter parser .so files
   mason/              ← LSP servers and tools (lua-language-server, stylua, prettier, etc.)
 config/nvim/dist/
-  nvim-linux-x86_64.tar.gz        ← Neovim binary (extract if not already installed)
-  tree-sitter-cli-linux-x86.zip   ← tree-sitter CLI (optional, for manual parser work)
+  nvim-linux-x86_64.tar.gz          ← Neovim binary (extract if not already installed)
+  tree-sitter-cli-linux-x86.zip     ← tree-sitter CLI (optional, for manual parser work)
+  lazygit_*_linux_x86_64.tar.gz     ← lazygit TUI (required for the lazygit.nvim plugin)
 ```
 
 ## Step 1 — Install system dependencies
@@ -172,7 +187,23 @@ Verify:
 tree-sitter --version
 ```
 
-## Step 4 — Copy the Neovim config
+## Step 4 — Install lazygit
+
+Required for the `lazygit.nvim` plugin (`<leader>gg`). Skip only if you have
+already disabled that plugin in `init.lua`.
+
+```bash
+sudo mkdir -p /opt/lazygit
+sudo tar -xzf config/nvim/dist/lazygit_*_linux_x86_64.tar.gz -C /opt/lazygit lazygit
+sudo ln -sf /opt/lazygit/lazygit /usr/local/bin/lazygit
+```
+
+Verify:
+```bash
+lazygit --version
+```
+
+## Step 5 — Copy the Neovim config
 
 ```bash
 mkdir -p ~/.config
@@ -181,7 +212,7 @@ cp -r config/nvim/ ~/.config/nvim/
 
 The config already has `vim.g.airgapped = true` set — no edits needed.
 
-## Step 5 — Copy plugins, parsers, and Mason tools
+## Step 6 — Copy plugins, parsers, and Mason tools
 
 ```bash
 mkdir -p ~/.local/share/nvim/site/pack/core/
@@ -194,7 +225,7 @@ mkdir -p ~/.local/share/nvim/
 cp -r data/mason/ ~/.local/share/nvim/mason/
 ```
 
-## Step 6 — Verify the installation
+## Step 7 — Verify the installation
 
 Launch Neovim and run the health check:
 ```
