@@ -101,6 +101,12 @@ do
   -- Set to true if you have a Nerd Font installed and selected in the terminal
   vim.g.have_nerd_font = true
 
+  -- Air-gapped mode: when true, skip all network operations (plugin clones,
+  -- Mason tool installs, treesitter parser installs/updates) and rely on
+  -- everything being pre-staged on disk. Flip to true when deploying to the
+  -- offline VM. See `pack_add` in Section 2 for how plugin loading branches.
+  vim.g.airgapped = false
+
   -- [[ Setting options ]]
   --  See `:help vim.o`
   -- NOTE: You can change these options as you wish!
@@ -285,6 +291,42 @@ do
   --  In this section we set up some autocommands to run build
   --  steps for certain plugins after they are installed or updated.
 
+  -- Wrapper around `vim.pack.add` that becomes a no-network packadd in
+  -- air-gapped mode. Online: identical to vim.pack.add. Offline: extracts
+  -- each plugin name from the spec and `:packadd`s it from pack/core/opt/.
+  -- Missing plugins are collected and surfaced once via VimEnter so a single
+  -- typo'd bundle doesn't take down startup.
+  ---@param spec (string|vim.pack.Spec)[]
+  function _G.pack_add(spec)
+    if not vim.g.airgapped then
+      vim.pack.add(spec)
+      return
+    end
+    for _, item in ipairs(spec) do
+      local src = type(item) == 'string' and item or item.src
+      local name = (type(item) == 'table' and item.name) or src:match '([^/]+)$'
+      name = name:gsub('%.git$', '')
+      if not pcall(vim.cmd.packadd, name) then
+        _G._airgap_missing = _G._airgap_missing or {}
+        table.insert(_G._airgap_missing, name)
+      end
+    end
+  end
+
+  if vim.g.airgapped then
+    vim.api.nvim_create_autocmd('VimEnter', {
+      once = true,
+      callback = function()
+        if _G._airgap_missing and #_G._airgap_missing > 0 then
+          vim.notify(
+            'Air-gapped mode: missing plugins in pack/core/opt:\n  - ' .. table.concat(_G._airgap_missing, '\n  - '),
+            vim.log.levels.WARN
+          )
+        end
+      end,
+    })
+  end
+
   local function run_build(name, cmd, cwd)
     local result = vim.system(cmd, { cwd = cwd }):wait()
     if result.code ~= 0 then
@@ -349,7 +391,7 @@ do
   --
   -- We first install it from https://github.com/NMAC427/guess-indent.nvim
   -- and then call its `setup()` function to start it with default settings.
-  vim.pack.add { gh 'NMAC427/guess-indent.nvim' }
+  pack_add { gh 'NMAC427/guess-indent.nvim' }
   require('guess-indent').setup {}
 
   -- Because lua is a real programming language, you can also have some logic to your installation -
@@ -357,13 +399,13 @@ do
   --
   -- Here we only install `nvim-web-devicons` (which adds pretty icons) if we have a Nerd Font,
   -- since otherwise the icons won't display properly.
-  if vim.g.have_nerd_font then vim.pack.add { gh 'nvim-tree/nvim-web-devicons' } end
+  if vim.g.have_nerd_font then pack_add { gh 'nvim-tree/nvim-web-devicons' } end
 
   -- Here is a more advanced configuration example that passes options to `gitsigns.nvim`
   --
   -- See `:help gitsigns` to understand what each configuration key does.
   -- Adds git related signs to the gutter, as well as utilities for managing changes
-  vim.pack.add { gh 'lewis6991/gitsigns.nvim' }
+  pack_add { gh 'lewis6991/gitsigns.nvim' }
   require('gitsigns').setup {
     signs = {
       add = { text = '+' }, ---@diagnostic disable-line: missing-fields
@@ -375,7 +417,7 @@ do
   }
 
   -- Useful plugin to show you pending keybinds.
-  vim.pack.add { gh 'folke/which-key.nvim' }
+  pack_add { gh 'folke/which-key.nvim' }
   require('which-key').setup {
     -- Delay between pressing a key and opening which-key (milliseconds)
     delay = 0,
@@ -395,26 +437,29 @@ do
   -- change the command under that to load whatever the name of that colorscheme is.
   --
   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-  vim.pack.add { gh 'folke/tokyonight.nvim' }
+  pack_add { gh 'folke/tokyonight.nvim' }
   ---@diagnostic disable-next-line: missing-fields
   require('tokyonight').setup {
+    transparent = true,
     styles = {
       comments = { italic = false }, -- Disable italics in comments
+      sidebars = 'transparent',
+      floats = 'transparent',
     },
   }
 
   -- Load the colorscheme here.
   -- Like many other themes, this one has different styles, and you could load
   -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-  vim.cmd.colorscheme 'tokyonight-storm'
+  vim.cmd.colorscheme 'tokyonight-moon'
 
   -- Highlight todo, notes, etc in comments
-  vim.pack.add { gh 'folke/todo-comments.nvim' }
+  pack_add { gh 'folke/todo-comments.nvim' }
   require('todo-comments').setup { signs = false }
 
   -- [[ mini.nvim ]]
   --  A collection of various small independent plugins/modules
-  vim.pack.add { gh 'nvim-mini/mini.nvim' }
+  pack_add { gh 'nvim-mini/mini.nvim' }
 
   -- Better Around/Inside textobjects
   --
@@ -459,8 +504,8 @@ end
 -- SECTION 3.5: HARPOON — Quick file marking and jumping
 -- ============================================================
 do
-  vim.pack.add { gh 'nvim-lua/plenary.nvim' }
-  vim.pack.add { { src = gh 'ThePrimeagen/harpoon', version = 'harpoon2' } }
+  pack_add { gh 'nvim-lua/plenary.nvim' }
+  pack_add { { src = gh 'ThePrimeagen/harpoon', version = 'harpoon2' } }
 
   local harpoon = require 'harpoon'
   harpoon:setup()
@@ -514,7 +559,7 @@ do
   if vim.fn.executable 'make' == 1 then table.insert(telescope_plugins, gh 'nvim-telescope/telescope-fzf-native.nvim') end
 
   -- NOTE: You can install multiple plugins at once
-  vim.pack.add(telescope_plugins)
+  pack_add(telescope_plugins)
 
   -- See `:help telescope` and `:help telescope.setup()`
   require('telescope').setup {
@@ -643,7 +688,7 @@ do
   -- and elegantly composed help section, `:help lsp-vs-treesitter`
 
   -- Useful status updates for LSP.
-  vim.pack.add { gh 'j-hui/fidget.nvim' }
+  pack_add { gh 'j-hui/fidget.nvim' }
   require('fidget').setup {}
 
   --  This function gets run when an LSP attaches to a particular buffer.
@@ -771,7 +816,7 @@ do
     },
   }
 
-  vim.pack.add {
+  pack_add {
     gh 'neovim/nvim-lspconfig',
     gh 'mason-org/mason.nvim',
     gh 'mason-org/mason-lspconfig.nvim',
@@ -793,7 +838,9 @@ do
     'markdownlint-cli2',
   })
 
-  require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+  -- Skipped in air-gapped mode: tool-installer reaches out to the Mason
+  -- registry. LSPs/tools are expected to already exist under stdpath('data')/mason.
+  if not vim.g.airgapped then require('mason-tool-installer').setup { ensure_installed = ensure_installed } end
 
   for name, server in pairs(servers) do
     vim.lsp.config(name, server)
@@ -807,7 +854,7 @@ end
 -- ============================================================
 do
   -- [[ Formatting ]]
-  vim.pack.add { gh 'stevearc/conform.nvim' }
+  pack_add { gh 'stevearc/conform.nvim' }
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function(bufnr)
@@ -850,7 +897,7 @@ do
 
   -- NOTE: You can also specify plugin using a version range for its git tag.
   --  See `:help vim.version.range()` for more info
-  vim.pack.add { { src = gh 'L3MON4D3/LuaSnip', version = vim.version.range '2.*' } }
+  pack_add { { src = gh 'L3MON4D3/LuaSnip', version = vim.version.range '2.*' } }
   require('luasnip').setup {}
 
   -- `friendly-snippets` contains a variety of premade snippets.
@@ -861,7 +908,7 @@ do
   -- require('luasnip.loaders.from_vscode').lazy_load()
 
   -- [[ Autocomplete Engine ]]
-  vim.pack.add { { src = gh 'saghen/blink.cmp', version = vim.version.range '1.*' } }
+  pack_add { { src = gh 'saghen/blink.cmp', version = vim.version.range '1.*' } }
   require('blink.cmp').setup {
     keymap = {
       -- 'default' (recommended) for mappings similar to built-in completions
@@ -934,11 +981,12 @@ do
   --  See `:help nvim-treesitter-intro`
 
   -- NOTE: You can also specify a branch or a specific commit
-  vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
+  pack_add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
-  -- Ensure basic parsers are installed
+  -- Ensure basic parsers are installed (skipped in air-gapped mode — parsers
+  -- are expected to already live in stdpath('data')/site/parser/*.so)
   local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
-  require('nvim-treesitter').install(parsers)
+  if not vim.g.airgapped then require('nvim-treesitter').install(parsers) end
 
   ---@param buf integer
   ---@param language string
@@ -974,7 +1022,7 @@ do
       if vim.tbl_contains(installed_parsers, language) then
         -- Enable the parser if it is already installed
         treesitter_try_attach(buf, language)
-      elseif vim.tbl_contains(available_parsers, language) then
+      elseif vim.tbl_contains(available_parsers, language) and not vim.g.airgapped then
         -- If a parser is available in `nvim-treesitter`, auto-install it and enable it after the installation is done
         require('nvim-treesitter').install(language):await(function() treesitter_try_attach(buf, language) end)
       else

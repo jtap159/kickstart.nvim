@@ -29,9 +29,15 @@ lua/kickstart/plugins/          ← optional extras (NOT auto-loaded)
   indent_line.lua               ← indent-blankline
   lint.lua                      ← nvim-lint
   neo-tree.lua                  ← neo-tree file browser
-lua/custom/plugins/             ← Jeremy's own plugins (currently empty)
+lua/custom/plugins/             ← Jeremy's own plugins
+  render-markdown.lua           ← render-markdown.nvim
+dist/                           ← offline binaries for air-gapped deployment
+  nvim-linux-x86_64.tar.gz      ← Neovim binary
+  tree-sitter-cli-linux-x86.zip ← tree-sitter CLI
 .stylua.toml                    ← Lua formatter config (160 col, 2-space, single quotes)
 ```
+
+**`vim.g.airgapped` (init.lua:107):** single boolean toggle for air-gapped deployment. When `true`, all network operations are skipped — see the Air-gapped Mode section below.
 
 ---
 
@@ -49,7 +55,7 @@ lua/custom/plugins/             ← Jeremy's own plugins (currently empty)
 | Linter | nvim-lint (markdown via markdownlint) (opt-in) |
 | File tree | neo-tree.nvim (opt-in) |
 | Git signs | gitsigns.nvim + extended keymaps (opt-in) |
-| Syntax/AST | nvim-treesitter (auto-installs parsers on FileType) |
+| Syntax/AST | nvim-treesitter (auto-installs parsers on FileType; skipped in airgapped mode) |
 | Text objects & surround | mini.ai + mini.surround |
 | Statusline | mini.statusline |
 | Colorscheme | tokyonight-storm |
@@ -209,13 +215,39 @@ Auto-format on save is **off by default**. To enable for a filetype, add it to `
 
 ---
 
+## Air-gapped Mode
+
+**Toggle:** `vim.g.airgapped = false` at `init.lua:107`. Set to `true` when deploying to the offline VM (the bundling skill does this automatically).
+
+**What the toggle gates when `true`:**
+
+| Subsystem | Online behaviour | Air-gapped behaviour |
+|---|---|---|
+| Plugins (`pack_add`) | `vim.pack.add` — clones from GitHub | `:packadd <name>` from `~/.local/share/nvim/site/pack/core/opt/` |
+| Mason tool-installer | Downloads LSPs/linters at startup | Skipped — tools must be pre-staged in `~/.local/share/nvim/mason/` |
+| Treesitter parsers (startup) | `install(parsers)` at init time | Skipped |
+| Treesitter parsers (FileType) | Auto-installs missing parser on first open | Falls through to attach-only; parser must already be in `~/.local/share/nvim/site/parser/` |
+
+**Missing plugin handling:** if a plugin is absent from `pack/core/opt/` in air-gapped mode, `pack_add` collects the failures and emits a single `vim.notify` warning at `VimEnter` listing the missing names — startup still completes.
+
+**`mason.setup()` always runs** so `vim.lsp.enable()` can resolve server binaries in `~/.local/share/nvim/mason/bin/`. Only `mason-tool-installer` (the network fetcher) is skipped.
+
+**Pre-staged asset locations (must match on air-gapped VM):**
+- Plugins: `~/.local/share/nvim/site/pack/core/opt/<name>/`
+- Mason tools/LSPs: `~/.local/share/nvim/mason/`
+- Treesitter parsers: `~/.local/share/nvim/site/parser/*.so`
+- Neovim + tree-sitter CLI binaries: `dist/` in this repo (for manual extraction)
+
+---
+
 ## Adding to the Config
 
-- **New LSP:** Add server name + settings to `servers` table (~line 688) → Mason auto-installs it
+- **New plugin:** Use `pack_add { gh 'user/repo' }` — **never** call `vim.pack.add` directly. `pack_add` is the global wrapper defined in Section 2; it transparently handles both online (delegates to `vim.pack.add`) and air-gapped (`:packadd` from disk) modes. Apply this rule in `init.lua` and any file under `lua/kickstart/plugins/` or `lua/custom/plugins/`.
+- **New LSP:** Add server name + settings to `servers` table (~line 688) → Mason auto-installs it (online only; pre-install via Mason on the internet box before bundling for air-gapped)
 - **New formatter:** Add filetype to `formatters_by_ft` in conform.nvim opts (~line 792); also add to `enabled_filetypes` to auto-format on save
 - **New linter:** `lua/kickstart/plugins/lint.lua` is already opt-in'd; add filetypes to `linters_by_ft`
-- **Custom plugin:** Add a `.lua` file to `lua/custom/plugins/` and uncomment `require 'custom.plugins'` (~line 973)
-- **New treesitter parser:** Parsers auto-install on first `FileType` event — nothing to configure. Force pre-install by adding to the `parsers` list (~line 901)
+- **Custom plugin:** Add a `.lua` file to `lua/custom/plugins/` — it is auto-loaded by `lua/custom/plugins/init.lua`
+- **New treesitter parser:** Parsers auto-install on first `FileType` event (online mode). In air-gapped mode parsers must be pre-staged in `~/.local/share/nvim/site/parser/`. Force pre-install by adding to the `parsers` list (~line 901) — run once online, then bundle the `.so` file.
 
 ---
 
