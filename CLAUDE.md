@@ -44,6 +44,7 @@ lua/custom/plugins/             ← Jeremy's own plugins
 dist/                           ← offline binaries for air-gapped deployment
   nvim-linux-x86_64.tar.gz      ← Neovim binary
   tree-sitter-cli-linux-x86.zip ← tree-sitter CLI
+  k8s-schemas/<version>-strict/ ← Kubernetes JSON schemas for yamlls (all.json + _definitions.json)
 scripts/                        ← repo automation
   bundle-airgap.sh              ← build the air-gap tarball (replaces the old skill)
   RESTORE.template.md           ← RESTORE.md template, version-substituted at bundle time
@@ -81,6 +82,8 @@ scripts/                        ← repo automation
 **Helm files:** files under any `templates/` directory (and `helmfile*.yaml`) are detected as the `helm` filetype via `vim.filetype.add` (end of Section 1). They get the `helm` treesitter parser (which injects `yaml` + `gotmpl`) and the `helm_ls` LSP. `yamlls` is scoped to plain yaml filetypes so it does not double-attach. `Chart.yaml` and `values.yaml` remain plain `yaml`.
 
 **Air-gap note for Helm:** `helm-ls` must be pre-installed via Mason on the online box (`:MasonInstall helm-ls`) before bundling — the bundling skill copies whatever is already in `~/.local/share/nvim/mason/`. The treesitter `helm`/`gotmpl`/`yaml` parsers are included in the pre-install list at `init.lua` Section 8, so they bundle automatically.
+
+**YAML / Kubernetes schemas (yamlls):** `yamlls`'s SchemaStore catalog auto-matches Kubernetes-shaped YAML against a GitHub-hosted schema (`yannh/kubernetes-json-schema`), which fails in air-gap. The schema is checked into `dist/k8s-schemas/v1.32.1-strict/` (both `all.json` and `_definitions.json` are needed — `all.json`'s `$ref`s resolve against the latter). The bundle script copies it to `~/.local/share/nvim/site/k8s-schemas/` on the VM, and the `yamlls` settings in `init.lua` Section 5 disable `schemaStore` when `vim.g.airgapped=true` and map common filename patterns (`values.yaml`, `*values.yaml`, `*-deployment.yaml`, etc.) to the local file. Extend the patterns inline as needed.
 
 To add more: add to the `servers` table in `init.lua` ~line 688.
 

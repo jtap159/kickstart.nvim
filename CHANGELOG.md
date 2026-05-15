@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.3.0 — 2026-05-15
+
+- Fixed `yamlls` failing to load Kubernetes JSON schema in air-gap
+  - yamlls's built-in SchemaStore catalog points Kubernetes YAML files at `https://raw.githubusercontent.com/yannh/kubernetes-json-schema/.../v1.32.1-standalone-strict/all.json`, which 404s on an offline VM. The schema is now shipped in the bundle and yamlls is wired to load it from disk.
+  - `dist/k8s-schemas/v1.32.1-strict/{all.json,_definitions.json}` — checked into the repo as the air-gap source-of-truth
+  - `scripts/bundle-airgap.sh`: stages `dist/k8s-schemas/` to `data/site/k8s-schemas/`, lands on the VM at `~/.local/share/nvim/site/k8s-schemas/`
+  - `init.lua` yamlls config: disables `yaml.schemaStore` when `vim.g.airgapped=true` and maps common Kubernetes/Helm-values filename patterns (`values.yaml`, `*values.yaml`, `*-deployment.yaml`, etc.) to the local schema via `yaml.schemas`
+  - Extend the pattern list in `init.lua:800` to cover more filename conventions
+- Fixed treesitter query symlinks pointing at host-specific absolute paths in the air-gap bundle
+  - `scripts/bundle-airgap.sh`: `cp -rL` dereferences the per-language symlinks so the tarball contains real `.scm` files instead of `/home/jeremy/...` symlinks that only resolved on Jeremy's box
+
 ## v1.2.1 — 2026-05-15
 
 - Fixed missing treesitter syntax highlighting (e.g. YAML) on air-gapped restores

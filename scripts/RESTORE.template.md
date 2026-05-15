@@ -11,6 +11,7 @@ data/
   site/pack/core/opt/ ← All plugins (pre-compiled .so files included)
   site/parser/        ← Treesitter parser .so files
   site/queries/       ← Treesitter highlight/indent/fold queries (per language)
+  site/k8s-schemas/   ← Kubernetes JSON schemas (yamlls reads from here)
   mason/              ← LSP servers and tools (lua-language-server, stylua, prettier, etc.)
 config/nvim/dist/
   nvim-linux-x86_64.tar.gz          ← Neovim binary (extract if not already installed)
@@ -111,6 +112,9 @@ cp data/site/parser/*.so ~/.local/share/nvim/site/parser/
 
 mkdir -p ~/.local/share/nvim/site/queries/
 cp -r data/site/queries/. ~/.local/share/nvim/site/queries/
+
+mkdir -p ~/.local/share/nvim/site/k8s-schemas/
+cp -r data/site/k8s-schemas/. ~/.local/share/nvim/site/k8s-schemas/
 
 mkdir -p ~/.local/share/nvim/
 cp -r data/mason/ ~/.local/share/nvim/mason/

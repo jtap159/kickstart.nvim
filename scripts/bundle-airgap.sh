@@ -41,7 +41,8 @@ info "Creating staging directory at $STAGING"
 mkdir -p "$STAGING/config" \
          "$STAGING/data/site/pack/core" \
          "$STAGING/data/site/parser" \
-         "$STAGING/data/site/queries"
+         "$STAGING/data/site/queries" \
+         "$STAGING/data/site/k8s-schemas"
 # data/mason is created by the cp in step 8 — avoids accidental nesting.
 
 # --- Step 4: copy Neovim config ---------------------------------------------
@@ -87,7 +88,17 @@ cp "${parsers[@]}" "$STAGING/data/site/parser/"
 info "Copying treesitter queries..."
 QUERIES_SRC="$HOME/.local/share/nvim/site/queries"
 [[ -d "$QUERIES_SRC" ]] || err "Queries dir not found: $QUERIES_SRC — run :TSInstall for each language online first."
-cp -r "$QUERIES_SRC"/. "$STAGING/data/site/queries/"
+cp -rL "$QUERIES_SRC"/. "$STAGING/data/site/queries/"
+
+# --- Step 7c: copy Kubernetes JSON schemas ----------------------------------
+# yamlls's SchemaStore catalog points at GitHub-hosted k8s schemas (yannh's
+# kubernetes-json-schema). In airgap those fetches fail; we ship the schema
+# locally and the init.lua yamlls config points yaml.schemas at file:// paths
+# under ~/.local/share/nvim/site/k8s-schemas/.
+info "Copying Kubernetes JSON schemas..."
+K8S_SCHEMAS_SRC="$REPO_ROOT/dist/k8s-schemas"
+[[ -d "$K8S_SCHEMAS_SRC" ]] || err "k8s schemas dir not found: $K8S_SCHEMAS_SRC"
+cp -r "$K8S_SCHEMAS_SRC"/. "$STAGING/data/site/k8s-schemas/"
 
 # --- Step 8: copy Mason tools -----------------------------------------------
 info "Copying Mason tools..."
@@ -114,6 +125,7 @@ SIZE=$(du -h "$OUTPUT" | cut -f1)
 PLUGIN_COUNT=$(tar -tzf "$OUTPUT" | grep -cE "data/site/pack/core/opt/[^/]+/$" || true)
 PARSER_COUNT=$(tar -tzf "$OUTPUT" | grep -cE "data/site/parser/[^/]+\.so$" || true)
 QUERIES_COUNT=$(tar -tzf "$OUTPUT" | grep -cE "data/site/queries/[^/]+/$" || true)
+SCHEMA_COUNT=$(tar -tzf "$OUTPUT"  | grep -cE "data/site/k8s-schemas/[^/]+/$" || true)
 MASON_COUNT=$(tar -tzf "$OUTPUT"  | grep -cE "data/mason/packages/[^/]+/$" || true)
 
 cat <<EOF
@@ -126,6 +138,7 @@ Bundle created successfully.
   Plugins:  $PLUGIN_COUNT
   Parsers:  $PARSER_COUNT
   Queries:  $QUERIES_COUNT languages
+  Schemas:  $SCHEMA_COUNT k8s versions
   Mason:    $MASON_COUNT tools
 
 Transfer the tarball to the air-gapped VM and follow RESTORE.md inside the archive.
