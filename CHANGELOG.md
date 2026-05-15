@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.1 — 2026-05-15
+
+- Fixed `helm-ls`'s embedded yaml-language-server failing to load the Kubernetes JSON schema in air-gap
+  - helm-ls spawns its own `yaml-language-server` for non-templated YAML chunks inside helm files. Its default config is `schemas = { kubernetes = "templates/**" }` — the magic string `kubernetes` makes the *embedded* yamlls fetch the schema directly from `raw.githubusercontent.com/yannh/...`, which is separate from SchemaStore. The v1.3.0 fix only covered the standalone `yamlls`, so opening any file under a `templates/` directory in air-gap still surfaced an "unable to load schema" notification.
+  - `init.lua` helm_ls config (~line 845): in air-gap, override `helm-ls.yamlls.config.schemaStore.enable = false` and map a narrow set of k8s-shaped filename patterns (`templates/**/*-deployment.y*ml`, `*-service.y*ml`, `*-configmap.y*ml`, `*-pod.y*ml`, `*-statefulset.y*ml`, `*-daemonset.y*ml`, `*-ingress.y*ml`) to the locally-bundled schema. Non-resource files like `helm-values.yaml` (Loki/values blobs that happen to live under `templates/`) get no schema → no fetch error AND no false-positive validation diagnostics. Online: no override, helm-ls uses its default and fetches over the network as normal.
+  - `CLAUDE.md`: added a "Helm + embedded yamlls (helm-ls)" section explaining the separate-process distinction so future debugging doesn't confuse standalone-yamlls config with embedded-yamlls config.
+
 ## v1.3.0 — 2026-05-15
 
 - Fixed `yamlls` failing to load Kubernetes JSON schema in air-gap

@@ -842,7 +842,45 @@ do
     -- and schema-aware diagnostics for Chart.yaml / values.yaml. Mason
     -- installs it as `helm-ls`; for air-gap, run `:MasonInstall helm-ls`
     -- on the online box before bundling.
-    helm_ls = {},
+    --
+    -- Embedded-yamlls air-gap fix: helm-ls spawns its own yaml-language-server
+    -- for non-templated YAML chunks inside helm files. Its default config is
+    -- `schemas = { kubernetes = "templates/**" }`, where the magic string
+    -- `kubernetes` makes yamlls fetch the k8s schema directly from GitHub
+    -- (separate from SchemaStore — disabling schemaStore on the standalone
+    -- yamlls does NOT silence this). In air-gap we point that mapping at the
+    -- locally-bundled schema instead, and narrow the glob to k8s-shaped
+    -- filenames so non-resource files like `helm-values.yaml` (Loki/values
+    -- blobs that happen to live under templates/) don't get validated against
+    -- the k8s schema and emit a flood of false-positive diagnostics.
+    helm_ls = (function()
+      if not vim.g.airgapped then return {} end
+      local k8s_schema = 'file://' .. vim.fs.joinpath(vim.fn.stdpath 'data', 'site', 'k8s-schemas', 'v1.32.1-strict', 'all.json')
+      return {
+        settings = {
+          ['helm-ls'] = {
+            yamlls = {
+              config = {
+                schemaStore = { enable = false, url = '' },
+                schemas = {
+                  [k8s_schema] = {
+                    'templates/**/*-deployment.y*ml',
+                    'templates/**/*-service.y*ml',
+                    'templates/**/*-configmap.y*ml',
+                    'templates/**/*-pod.y*ml',
+                    'templates/**/*-statefulset.y*ml',
+                    'templates/**/*-daemonset.y*ml',
+                    'templates/**/*-ingress.y*ml',
+                  },
+                },
+                completion = true,
+                hover = true,
+              },
+            },
+          },
+        },
+      }
+    end)(),
 
     -- Special Lua Config, as recommended by neovim help docs
     lua_ls = {
