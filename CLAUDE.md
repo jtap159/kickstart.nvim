@@ -23,6 +23,7 @@ Detailed usage guides for specific tools live in `doc/`. **Read the relevant fil
 | Tool | Doc | When to consult |
 |---|---|---|
 | lazygit | `doc/lazygit.md` | Any question about lazygit, the `lazygit.nvim` plugin, `<leader>gg`/`<leader>gf`/`<leader>gl`, in-TUI keybindings, hunk staging, interactive rebase, merge conflict resolution, or how the lazygit binary gets into the air-gapped bundle |
+| claudecode | `doc/claudecode.md` | Any question about the `claudecode.nvim` plugin, `<leader>c*` bindings (`cc`/`cf`/`cr`/`cC`/`cm`/`cb`/`cs`/`ca`/`cd`), `:ClaudeCode*` commands, terminal provider (native vs snacks), how the `claude` CLI binary gets bundled for air-gap, or auth/network reachability caveats |
 
 ---
 
@@ -39,11 +40,15 @@ lua/kickstart/plugins/          ← optional extras (NOT auto-loaded)
   indent_line.lua               ← indent-blankline
   lint.lua                      ← nvim-lint
   neo-tree.lua                  ← neo-tree file browser
+  lazygit.lua                   ← lazygit.nvim (requires `lazygit` binary)
+  claudecode.lua                ← claudecode.nvim (requires `claude` CLI binary)
 lua/custom/plugins/             ← Jeremy's own plugins
   render-markdown.lua           ← render-markdown.nvim
 dist/                           ← offline binaries for air-gapped deployment
   nvim-linux-x86_64.tar.gz      ← Neovim binary
   tree-sitter-cli-linux-x86.zip ← tree-sitter CLI
+  lazygit_<version>_linux_x86_64.tar.gz  ← lazygit TUI binary
+  claude_<version>_linux_x86_64.tar.gz   ← Claude Code CLI binary (self-contained ELF)
   k8s-schemas/<version>-strict/ ← Kubernetes JSON schemas for yamlls (all.json + _definitions.json)
 scripts/                        ← repo automation
   bundle-airgap.sh              ← build the air-gap tarball (replaces the old skill)
@@ -76,6 +81,7 @@ scripts/                        ← repo automation
 | Indent detection | guess-indent.nvim |
 | Comment highlights | todo-comments.nvim |
 | Auto brackets | nvim-autopairs (opt-in) |
+| AI / Claude Code | claudecode.nvim (opt-in; requires `claude` CLI on $PATH) |
 
 **Active LSPs/tools (auto-installed via Mason):** `lua_ls`, `stylua`, `prettier`, `yamlls`, `jsonls`, `helm_ls`
 
@@ -84,6 +90,8 @@ scripts/                        ← repo automation
 **Air-gap note for Helm:** `helm-ls` must be pre-installed via Mason on the online box (`:MasonInstall helm-ls`) before bundling — the bundling skill copies whatever is already in `~/.local/share/nvim/mason/`. The treesitter `helm`/`gotmpl`/`yaml` parsers are included in the pre-install list at `init.lua` Section 8, so they bundle automatically.
 
 **YAML / Kubernetes schemas (yamlls):** `yamlls`'s SchemaStore catalog auto-matches Kubernetes-shaped YAML against a GitHub-hosted schema (`yannh/kubernetes-json-schema`), which fails in air-gap. The schema is checked into `dist/k8s-schemas/v1.32.1-strict/` (both `all.json` and `_definitions.json` are needed — `all.json`'s `$ref`s resolve against the latter). The bundle script copies it to `~/.local/share/nvim/site/k8s-schemas/` on the VM. The `yamlls` settings in `init.lua` Section 5 are gated on `vim.g.airgapped`: in air-gap, `schemaStore` is disabled and `yaml.schemas` maps common filename patterns (`values.yaml`, `*values.yaml`, `*-deployment.yaml`, etc.) to the local file; online, the local mapping is skipped entirely so SchemaStore handles k8s detection over the network as normal. Extend the patterns inline as needed.
+
+**Claude Code (claudecode.nvim):** opt-in via `require 'kickstart.plugins.claudecode'` (init.lua Section 9). Spawns the `claude` CLI in a Neovim `:terminal` split — keymaps under `<leader>c` (plugin's default is `<leader>a`, remapped here because harpoon owns that). Uses `terminal.provider = 'native'` so we don't pull in `folke/snacks.nvim`; switch to `'snacks'` if that plugin is later installed. The plugin itself makes no outbound network calls (it just talks to the local `claude` binary over a lockfile + WebSocket). Air-gap: `dist/claude_*_linux_x86_64.tar.gz` ships the self-contained ELF (~70 MB compressed), `scripts/bundle-airgap.sh` verifies the glob, and `RESTORE.md` step 5 extracts it to `/opt/claude/claude` + symlinks `/usr/local/bin/claude`. The binary still needs reachability to `api.anthropic.com` (directly or via proxy) plus credentials — those are environment concerns, not bundle concerns. See `doc/claudecode.md` for full usage.
 
 **Helm + embedded yamlls (helm-ls):** `helm-ls` spawns its own `yaml-language-server` for non-templated YAML chunks inside helm files — this is a *separate process* from the standalone `yamlls`, with its own config. Its default `schemas = { kubernetes = "templates/**" }` makes the embedded yamlls fetch the k8s schema directly from GitHub (this is *not* SchemaStore — disabling the standalone yamlls's `schemaStore` does nothing here). The `helm_ls` settings in `init.lua` Section 5 are gated on `vim.g.airgapped`: in air-gap, the embedded yamlls's `schemaStore` is disabled and `schemas` maps narrow k8s-shaped patterns (`templates/**/*-deployment.y*ml`, etc.) to the local schema file; online, no override → helm-ls uses its default and fetches over the network as normal. The pattern list is intentionally narrow so non-resource YAML under `templates/` (e.g. `helm-values.yaml` that contains subchart values) doesn't get validated against the k8s schema. Extend the patterns inline if you add more k8s-shaped filename conventions.
 
@@ -213,6 +221,22 @@ Keymaps live in `lua/kickstart/plugins/gitsigns.lua` (requires opt-in at ~line 9
 |---|---|
 | `\` | Reveal current file in neo-tree (press `\` again to close) |
 | `<C-h/j/k/l>` | Move between splits |
+
+### Claude Code (claudecode.nvim)
+
+See `doc/claudecode.md` for the full guide. The plugin defaults its bindings to `<leader>a`; in this config they live under `<leader>c` to avoid clashing with harpoon.
+
+| Key | Mode | Action |
+|---|---|---|
+| `<leader>cc` | n | Toggle Claude terminal split |
+| `<leader>cf` | n | Focus Claude split |
+| `<leader>cr` | n | Resume last session |
+| `<leader>cC` | n | Continue previous turn |
+| `<leader>cm` | n | Select model |
+| `<leader>cb` | n | Add current buffer to context |
+| `<leader>cs` | v | Send visual selection |
+| `<leader>ca` | n | Accept proposed diff |
+| `<leader>cd` | n | Deny proposed diff |
 
 ### Formatting
 

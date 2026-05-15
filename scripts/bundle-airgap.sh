@@ -57,6 +57,8 @@ for required in "nvim-linux-x86_64.tar.gz" "tree-sitter-cli-linux-x86.zip"; do
 done
 compgen -G "$DIST/lazygit_*_linux_x86_64.tar.gz" >/dev/null \
     || err "Missing $DIST/lazygit_*_linux_x86_64.tar.gz — re-stage dist/ before bundling."
+compgen -G "$DIST/claude_*_linux_x86_64.tar.gz" >/dev/null \
+    || err "Missing $DIST/claude_*_linux_x86_64.tar.gz — re-stage dist/ before bundling."
 
 # --- Step 5: flip airgapped=true --------------------------------------------
 info "Flipping vim.g.airgapped to true in bundled copy..."

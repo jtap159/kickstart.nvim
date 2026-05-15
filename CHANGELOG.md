@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.4.0 — 2026-05-15
+
+- Added `claudecode.nvim` as an opt-in kickstart plugin (`lua/kickstart/plugins/claudecode.lua`)
+  - Runs the `claude` CLI inside a Neovim `:terminal` split — no separate tmux pane needed
+  - Keymaps relocated from the plugin's default `<leader>a` (taken by harpoon) to `<leader>c`: `cc` toggle, `cf` focus, `cr` resume, `cC` continue, `cm` select-model, `cb` add-current-buffer, `cs` send-visual-selection, `ca` accept-diff, `cd` deny-diff
+  - which-key group `<leader>c` = `[C]laude Code` registered in `init.lua` Section 3
+  - `terminal.provider = 'native'` (Neovim's built-in terminal) — skips the recommended `folke/snacks.nvim` dep to keep the plugin tree small
+  - The plugin itself makes no outbound network calls; it spawns `claude` and talks to it over `~/.claude/ide/<port>.lock` + WebSocket
+- Added `dist/claude_2.1.142_linux_x86_64.tar.gz` for air-gapped deployment (69 MB compressed, self-contained ELF — no Node runtime required at runtime)
+- Updated `scripts/bundle-airgap.sh`: verifies `dist/claude_*_linux_x86_64.tar.gz` exists before bundling
+- Updated `scripts/RESTORE.template.md`: added "Step 5 — Install Claude Code CLI" (extract to `/opt/claude/`, symlink `/usr/local/bin/claude`), renumbered subsequent steps (6 = copy config, 7 = copy plugins/parsers/Mason, 8 = verify); includes an auth/network-reachability note since the binary still needs a route to `api.anthropic.com` + credentials
+- Added `doc/claudecode.md` — full usage guide (commands, keymaps, workflows, configuration, air-gap notes, troubleshooting)
+- Updated `CLAUDE.md`: companion-docs entry, plugin-stack row, file-tree diagram, keybindings reference, and an air-gap notes paragraph for claudecode
+
 ## v1.3.1 — 2026-05-15
 
 - Fixed `helm-ls`'s embedded yaml-language-server failing to load the Kubernetes JSON schema in air-gap

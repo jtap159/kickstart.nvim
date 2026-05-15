@@ -17,6 +17,7 @@ config/nvim/dist/
   nvim-linux-x86_64.tar.gz          ← Neovim binary (extract if not already installed)
   tree-sitter-cli-linux-x86.zip     ← tree-sitter CLI (optional, for manual parser work)
   lazygit_*_linux_x86_64.tar.gz     ← lazygit TUI (required for the lazygit.nvim plugin)
+  claude_*_linux_x86_64.tar.gz      ← Claude Code CLI (required for the claudecode.nvim plugin)
 ```
 
 ## Step 1 — Install system dependencies
@@ -92,7 +93,33 @@ Verify:
 lazygit --version
 ```
 
-## Step 5 — Copy the Neovim config
+## Step 5 — Install Claude Code CLI
+
+Required for the `claudecode.nvim` plugin (`<leader>cc` to toggle). Skip only
+if you have already disabled that plugin in `init.lua`.
+
+The bundled binary is the same self-contained ELF that ships inside the
+`@anthropic-ai/claude-code` npm package — no Node runtime needed.
+
+```bash
+sudo mkdir -p /opt/claude
+sudo tar -xzf config/nvim/dist/claude_*_linux_x86_64.tar.gz -C /opt/claude claude
+sudo ln -sf /opt/claude/claude /usr/local/bin/claude
+```
+
+Verify:
+```bash
+claude --version
+```
+
+> **Auth note:** the binary needs credentials to actually reach the Claude API.
+> If this VM has no path to `api.anthropic.com`, the plugin will load and
+> spawn `claude` cleanly but chats will fail. If the VM has an outbound proxy
+> to Anthropic, copy your `~/.claude/.credentials.json` (or run
+> `claude login`) before opening Neovim. The plugin itself makes no network
+> calls — it only talks to the local `claude` process over a Unix socket.
+
+## Step 6 — Copy the Neovim config
 
 ```bash
 mkdir -p ~/.config
@@ -101,7 +128,7 @@ cp -r config/nvim/ ~/.config/nvim/
 
 The config already has `vim.g.airgapped = true` set — no edits needed.
 
-## Step 6 — Copy plugins, parsers, and Mason tools
+## Step 7 — Copy plugins, parsers, and Mason tools
 
 ```bash
 mkdir -p ~/.local/share/nvim/site/pack/core/
@@ -120,7 +147,7 @@ mkdir -p ~/.local/share/nvim/
 cp -r data/mason/ ~/.local/share/nvim/mason/
 ```
 
-## Step 7 — Verify the installation
+## Step 8 — Verify the installation
 
 Launch Neovim and run the health check:
 ```
