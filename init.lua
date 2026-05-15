@@ -804,35 +804,36 @@ do
     -- (see scripts/bundle-airgap.sh) and disable SchemaStore in air-gap so it
     -- never reaches out. To extend coverage, add entries to `schemas` below.
     yamlls = (function()
-      local k8s_schema = 'file://' .. vim.fs.joinpath(vim.fn.stdpath 'data', 'site', 'k8s-schemas', 'v1.32.1-strict', 'all.json')
+      local yaml_settings = {
+        schemaStore = {
+          enable = not vim.g.airgapped,
+          url = '',
+        },
+      }
+      if vim.g.airgapped then
+        local k8s_schema = 'file://' .. vim.fs.joinpath(vim.fn.stdpath 'data', 'site', 'k8s-schemas', 'v1.32.1-strict', 'all.json')
+        yaml_settings.schemas = {
+          [k8s_schema] = {
+            'values.yaml',
+            'values.yml',
+            'values.*.yaml',
+            'values.*.yml',
+            '*values.yaml',
+            '*values.yml',
+            '*.k8s.yaml',
+            '*-deployment.y*ml',
+            '*-service.y*ml',
+            '*-configmap.y*ml',
+            '*-pod.y*ml',
+            '*-statefulset.y*ml',
+            '*-daemonset.y*ml',
+            '*-ingress.y*ml',
+          },
+        }
+      end
       return {
         filetypes = { 'yaml', 'yaml.docker-compose', 'yaml.gitlab' },
-        settings = {
-          yaml = {
-            schemaStore = {
-              enable = not vim.g.airgapped,
-              url = '',
-            },
-            schemas = {
-              [k8s_schema] = {
-                'values.yaml',
-                'values.yml',
-                'values.*.yaml',
-                'values.*.yml',
-                '*values.yaml',
-                '*values.yml',
-                '*.k8s.yaml',
-                '*-deployment.y*ml',
-                '*-service.y*ml',
-                '*-configmap.y*ml',
-                '*-pod.y*ml',
-                '*-statefulset.y*ml',
-                '*-daemonset.y*ml',
-                '*-ingress.y*ml',
-              },
-            },
-          },
-        },
+        settings = { yaml = yaml_settings },
       }
     end)(),
     jsonls = {},
