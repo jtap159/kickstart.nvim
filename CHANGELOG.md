@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.1 — 2026-05-15
+
+- Fixed missing treesitter syntax highlighting (e.g. YAML) on air-gapped restores
+  - `nvim-treesitter` (main branch) keeps per-language `highlights.scm`/`indents.scm`/etc. in `~/.local/share/nvim/site/queries/<lang>/`, separate from the parser `.so` files. The bundle was copying parsers but not queries, so `vim.treesitter.query.get()` returned nil on the target and nothing got colored.
+  - `scripts/bundle-airgap.sh`: stages `~/.local/share/nvim/site/queries/` into the tarball and reports a per-language query count
+  - `scripts/RESTORE.template.md`: adds a copy step for `data/site/queries/` into `~/.local/share/nvim/site/queries/`
+
 ## v1.2.0 — 2026-05-14
 
 - Added Helm support

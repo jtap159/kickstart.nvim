@@ -40,7 +40,8 @@ rm -rf "$STAGING"
 info "Creating staging directory at $STAGING"
 mkdir -p "$STAGING/config" \
          "$STAGING/data/site/pack/core" \
-         "$STAGING/data/site/parser"
+         "$STAGING/data/site/parser" \
+         "$STAGING/data/site/queries"
 # data/mason is created by the cp in step 8 — avoids accidental nesting.
 
 # --- Step 4: copy Neovim config ---------------------------------------------
@@ -78,6 +79,16 @@ shopt -u nullglob
 [[ ${#parsers[@]} -gt 0 ]] || err "No .so parsers found in $PARSER_SRC"
 cp "${parsers[@]}" "$STAGING/data/site/parser/"
 
+# --- Step 7b: copy treesitter queries ---------------------------------------
+# nvim-treesitter (main branch) installs per-language highlight/indent/fold
+# queries to ~/.local/share/nvim/site/queries/<lang>/. Without these the
+# parser loads but vim.treesitter.query.get() returns nil and nothing is
+# highlighted.
+info "Copying treesitter queries..."
+QUERIES_SRC="$HOME/.local/share/nvim/site/queries"
+[[ -d "$QUERIES_SRC" ]] || err "Queries dir not found: $QUERIES_SRC — run :TSInstall for each language online first."
+cp -r "$QUERIES_SRC"/. "$STAGING/data/site/queries/"
+
 # --- Step 8: copy Mason tools -----------------------------------------------
 info "Copying Mason tools..."
 MASON_SRC="$HOME/.local/share/nvim/mason"
@@ -102,6 +113,7 @@ rm -rf "$STAGING"
 SIZE=$(du -h "$OUTPUT" | cut -f1)
 PLUGIN_COUNT=$(tar -tzf "$OUTPUT" | grep -cE "data/site/pack/core/opt/[^/]+/$" || true)
 PARSER_COUNT=$(tar -tzf "$OUTPUT" | grep -cE "data/site/parser/[^/]+\.so$" || true)
+QUERIES_COUNT=$(tar -tzf "$OUTPUT" | grep -cE "data/site/queries/[^/]+/$" || true)
 MASON_COUNT=$(tar -tzf "$OUTPUT"  | grep -cE "data/mason/packages/[^/]+/$" || true)
 
 cat <<EOF
@@ -113,6 +125,7 @@ Bundle created successfully.
   Version:  $VERSION
   Plugins:  $PLUGIN_COUNT
   Parsers:  $PARSER_COUNT
+  Queries:  $QUERIES_COUNT languages
   Mason:    $MASON_COUNT tools
 
 Transfer the tarball to the air-gapped VM and follow RESTORE.md inside the archive.

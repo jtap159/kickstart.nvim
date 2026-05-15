@@ -10,6 +10,7 @@ config/nvim/          ← Neovim config (airgapped mode enabled)
 data/
   site/pack/core/opt/ ← All plugins (pre-compiled .so files included)
   site/parser/        ← Treesitter parser .so files
+  site/queries/       ← Treesitter highlight/indent/fold queries (per language)
   mason/              ← LSP servers and tools (lua-language-server, stylua, prettier, etc.)
 config/nvim/dist/
   nvim-linux-x86_64.tar.gz          ← Neovim binary (extract if not already installed)
@@ -107,6 +108,9 @@ cp -r data/site/pack/core/opt/ ~/.local/share/nvim/site/pack/core/
 
 mkdir -p ~/.local/share/nvim/site/parser/
 cp data/site/parser/*.so ~/.local/share/nvim/site/parser/
+
+mkdir -p ~/.local/share/nvim/site/queries/
+cp -r data/site/queries/. ~/.local/share/nvim/site/queries/
 
 mkdir -p ~/.local/share/nvim/
 cp -r data/mason/ ~/.local/share/nvim/mason/
