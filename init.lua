@@ -522,7 +522,7 @@ end
 -- ============================================================
 do
   pack_add { gh 'nvim-lua/plenary.nvim' }
-  pack_add { { src = gh 'ThePrimeagen/harpoon', version = 'harpoon2' } }
+  pack_add { { src = gh 'ThePrimeagen/harpoon', branch = 'harpoon2' } }
 
   local harpoon = require 'harpoon'
   harpoon:setup()
